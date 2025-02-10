@@ -2,6 +2,12 @@
 
 A modern e-commerce platform built with Django , responsive UI with Tailwind CSS.
 
+## Prototyping
+https://www.figma.com/proto/YYI4DOADJEoYvewIwBEWgH/Untitled?node-id=1-31&p=f&t=3nSHMnaxUaa0qajS-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1
+
+## sample Images
+https://drive.google.com/drive/folders/19WIhq7Iz3-7vvpb8yDTG6KpR7AnKAYgP?usp=sharing
+
 ## Features
 
 
