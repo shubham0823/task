@@ -1,0 +1,73 @@
+{% extends 'store/base.html' %}
+{% load store_extras %}
+
+{% block title %}Products - E-commerce Store{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Search Bar -->
+    <div class="mb-8">
+        <form method="get" action="{% url 'product_list' %}" class="flex gap-4">
+            <input type="text" 
+                   name="q" 
+                   value="{{ search_query }}"
+                   placeholder="Search products..." 
+                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+            <button type="submit" 
+                    class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">
+                Search
+            </button>
+        </form>
+    </div>
+
+    <!-- Search Results Info -->
+    {% if search_query %}
+    <div class="mb-6">
+        <h2 class="text-xl text-gray-600">
+            Search results for: "{{ search_query }}"
+        </h2>
+    </div>
+    {% endif %}
+
+    <h1 class="text-3xl font-bold mb-8">Our Products</h1>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for product in products %}
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-48 object-cover">
+            <div class="p-4">
+                <h2 class="text-xl font-semibold mb-2">{{ product.name }}</h2>
+                <p class="text-gray-600 mb-4 line-clamp-2">{{ product.description }}</p>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        {% if product.has_discount %}
+                            <span class="text-lg font-bold text-primary">₹{{ product.discount_price }}</span>
+                            <span class="text-sm text-gray-500 line-through">₹{{ product.price }}</span>
+                            {% with savings=product.price|sub:product.discount_price %}
+                            <span class="text-sm text-green-600 ml-2">Save ₹{{ savings }}</span>
+                            {% endwith %}
+                        {% else %}
+                            <span class="text-lg font-bold text-primary">₹{{ product.price }}</span>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'product_detail' product.id %}" 
+                       class="bg-primary text-white px-4 py-2 rounded text-center hover:bg-blue-600 transition">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-8">
+            <p class="text-gray-500">
+                {% if search_query %}
+                    No products found matching your search.
+                {% else %}
+                    No products available.
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

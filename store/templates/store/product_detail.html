@@ -1,0 +1,291 @@
+{% extends 'store/base.html' %}
+{% load store_extras %}
+
+{% block title %}{{ product.name }} - E-commerce Store{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="md:flex">
+            <!-- Product Image -->
+            <div class="md:w-1/2">
+                <img src="{{ product.image.url }}" 
+                     alt="{{ product.name }}" 
+                     class="w-full h-96 object-cover">
+            </div>
+            
+            <!-- Product Details -->
+            <div class="md:w-1/2 p-8">
+                <h1 class="text-3xl font-bold mb-4">{{ product.name }}</h1>
+                
+                <div class="mb-6">
+                    {% if product.has_discount %}
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl font-bold text-primary">₹{{ product.discount_price }}</span>
+                            <span class="text-xl text-gray-500 line-through">₹{{ product.price }}</span>
+                        </div>
+                        <div class="mt-2">
+                            {% with savings=product.price|sub:product.discount_price %}
+                            <span class="text-green-600">You save ₹{{ savings }}!</span>
+                            {% endwith %}
+                        </div>
+                    {% else %}
+                        <span class="text-3xl font-bold text-primary">₹{{ product.price }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Description</h2>
+                    <p class="text-gray-600">{{ product.description }}</p>
+                </div>
+
+                <!-- Size Selection -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Select Size</h2>
+                    <div class="grid grid-cols-5 gap-2">
+                        {% for product_size in product.productsize_set.all %}
+                            {% if product_size.stock > 0 %}
+                                <label class="relative">
+                                    <input type="radio" 
+                                           name="size" 
+                                           value="{{ product_size.size.id }}"
+                                           class="peer absolute opacity-0"
+                                           data-stock="{{ product_size.stock }}">
+                                    <div class="border-2 border-gray-300 rounded-md py-2 px-4 text-center cursor-pointer
+                                                peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white
+                                                hover:border-primary transition-colors">
+                                        {{ product_size.size.name }}
+                                    </div>
+                                </label>
+                            {% else %}
+                                <div class="border-2 border-gray-200 rounded-md py-2 px-4 text-center text-gray-400 bg-gray-50 cursor-not-allowed">
+                                    {{ product_size.size.name }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Pincode Check -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Check Delivery</h2>
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               id="pincode" 
+                               placeholder="Enter Pincode" 
+                               maxlength="6"
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                               pattern="[0-9]{6}">
+                        <button onclick="checkPincode()"
+                                class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+                            Check
+                        </button>
+                    </div>
+                    <p id="pincode-message" class="mt-2 text-sm"></p>
+                </div>
+                
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Stock</h2>
+                    <p class="text-gray-600" id="stock-info">Please select a size</p>
+                </div>
+
+                <!-- Quantity Selection -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Quantity</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="updateQuantity(-1)"
+                                class="bg-gray-200 text-gray-600 px-3 py-1 rounded hover:bg-gray-300 transition">
+                            -
+                        </button>
+                        <input type="number" 
+                               id="quantity" 
+                               value="1" 
+                               min="1" 
+                               class="w-20 text-center px-2 py-1 border border-gray-300 rounded"
+                               readonly>
+                        <button onclick="updateQuantity(1)"
+                                class="bg-gray-200 text-gray-600 px-3 py-1 rounded hover:bg-gray-300 transition">
+                            +
+                        </button>
+                    </div>
+                </div>
+                
+                <form id="add-to-cart-form" method="post" action="{% url 'add_to_cart' product.id %}" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="size_id" id="selected-size">
+                    <input type="hidden" name="quantity" id="selected-quantity" value="1">
+                    <input type="hidden" name="pincode" id="selected-pincode">
+                    <button type="submit" 
+                            id="add-to-cart-btn" 
+                            class="w-full bg-gray-400 text-white py-3 px-6 rounded-lg cursor-not-allowed" 
+                            disabled>
+                        Select a Size
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reviews Section -->
+    <div class="mt-8">
+        <div class="bg-white rounded-lg shadow-md p-8">
+            <h2 class="text-2xl font-bold mb-6">Customer Reviews</h2>
+            
+            <!-- Add Review Form -->
+            {% if user.is_authenticated %}
+                {% if not user_has_reviewed %}
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-4">Write a Review</h3>
+                    <form method="post" action="{% url 'add_review' product.id %}" class="space-y-4">
+                        {% csrf_token %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Rating</label>
+                            <select name="rating" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary rounded-md">
+                                <option value="">Select Rating</option>
+                                <option value="5">5 Stars - Excellent</option>
+                                <option value="4">4 Stars - Very Good</option>
+                                <option value="3">3 Stars - Good</option>
+                                <option value="2">2 Stars - Fair</option>
+                                <option value="1">1 Star - Poor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Comment</label>
+                            <textarea name="comment" rows="4" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"></textarea>
+                        </div>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+                            Submit Review
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="mb-8 p-4 bg-gray-50 rounded-md">
+                    <p class="text-gray-600">Please <a href="{% url 'login' %}" class="text-primary hover:text-blue-600">login</a> to write a review.</p>
+                </div>
+            {% endif %}
+            
+            <!-- Reviews List -->
+            <div class="space-y-6">
+                {% for review in product.reviews.all %}
+                <div class="border-b pb-6 last:border-b-0">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                            <div class="text-yellow-400">
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <span class="ml-2 font-medium">{{ review.user.username }}</span>
+                        </div>
+                        <span class="text-sm text-gray-500">{{ review.created_at|date:"F j, Y" }}</span>
+                    </div>
+                    <p class="text-gray-600">{{ review.comment }}</p>
+                </div>
+                {% empty %}
+                <p class="text-gray-500">No reviews yet. Be the first to review this product!</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-8">
+        <a href="{% url 'product_list' %}" 
+           class="text-primary hover:text-blue-600 transition">
+            &larr; Back to Products
+        </a>
+    </div>
+</div>
+
+<!-- JavaScript for Size Selection, Quantity, and Pincode -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sizeInputs = document.querySelectorAll('input[name="size"]');
+    const stockInfo = document.getElementById('stock-info');
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    const selectedSizeInput = document.getElementById('selected-size');
+    const selectedQuantityInput = document.getElementById('selected-quantity');
+    const quantityInput = document.getElementById('quantity');
+    const pincodeInput = document.getElementById('pincode');
+    const selectedPincodeInput = document.getElementById('selected-pincode');
+    let maxStock = 0;
+
+    sizeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            maxStock = parseInt(this.dataset.stock);
+            stockInfo.textContent = `${maxStock} items available`;
+            selectedSizeInput.value = this.value;
+            
+            // Reset quantity to 1 when size changes
+            quantityInput.value = 1;
+            selectedQuantityInput.value = 1;
+            
+            updateAddToCartButton();
+        });
+    });
+
+    function updateAddToCartButton() {
+        const sizeSelected = selectedSizeInput.value !== '';
+        const pincodeValid = selectedPincodeInput.value !== '';
+        
+        if (sizeSelected && pincodeValid) {
+            addToCartBtn.textContent = 'Add to Cart';
+            addToCartBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            addToCartBtn.classList.add('bg-primary', 'hover:bg-blue-600');
+            addToCartBtn.disabled = false;
+        } else {
+            addToCartBtn.textContent = sizeSelected ? 'Check Pincode' : 'Select a Size';
+            addToCartBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+            addToCartBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
+            addToCartBtn.disabled = true;
+        }
+    }
+
+    window.updateQuantity = function(change) {
+        let currentQty = parseInt(quantityInput.value);
+        let newQty = currentQty + change;
+        
+        if (newQty >= 1 && newQty <= maxStock) {
+            quantityInput.value = newQty;
+            selectedQuantityInput.value = newQty;
+        }
+    }
+
+    window.checkPincode = function() {
+        const pincode = pincodeInput.value;
+        const messageElement = document.getElementById('pincode-message');
+        
+        if (!/^\d{6}$/.test(pincode)) {
+            messageElement.textContent = 'Please enter a valid 6-digit pincode';
+            messageElement.className = 'mt-2 text-sm text-red-600';
+            return;
+        }
+
+        fetch(`/check-pincode/${pincode}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.is_deliverable) {
+                    messageElement.textContent = `Delivery available in ${data.delivery_days} days`;
+                    messageElement.className = 'mt-2 text-sm text-green-600';
+                    selectedPincodeInput.value = pincode;
+                } else {
+                    messageElement.textContent = 'Delivery not available in this area';
+                    messageElement.className = 'mt-2 text-sm text-red-600';
+                    selectedPincodeInput.value = '';
+                }
+                updateAddToCartButton();
+            })
+            .catch(error => {
+                messageElement.textContent = 'Error checking pincode';
+                messageElement.className = 'mt-2 text-sm text-red-600';
+                selectedPincodeInput.value = '';
+                updateAddToCartButton();
+            });
+    }
+});
+</script>
+{% endblock %} 
